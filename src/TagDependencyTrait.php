@@ -27,13 +27,26 @@ trait TagDependencyTrait
     }
 
     /**
+     * Class name for NamingHelper func
+     *
+     * Example: model Users (one cache) and model UsersApi extends Users (it is another cache)
+     * The method for merge cache few objects
+     *
+     * @return string
+     */
+    public static function getTagDependencyCacheClass()
+    {
+        return self::class;
+    }
+
+    /**
      * Returns common tag name for model instance
      * @return string tag name
      */
     public static function commonTag()
     {
         /** @var \yii\db\ActiveRecord $this */
-        return NamingHelper::getCommonTag(static::className());
+        return NamingHelper::getCommonTag(static::getTagDependencyCacheClass());
     }
 
     /**
@@ -45,18 +58,16 @@ trait TagDependencyTrait
     {
         /** @var \yii\db\ActiveRecord $this */
         $primaryKey = null;
-        if (count($this->primaryKey()) === 1)
-        {
+        if (count($this->primaryKey()) === 1) {
             $key = $this->primaryKey()[0];
             $primaryKey = isset($oldFields[$key]) ? $oldFields[$key] : $this->$key;
         } else {
             $primaryKey = [];
-            foreach ($this->primaryKey() as $key)
-            {
+            foreach ($this->primaryKey() as $key) {
                 $primaryKey[$key] = isset($oldFields[$key]) ? $oldFields[$key] : $this->$key;
             }
         }
-        return NamingHelper::getObjectTag($this->className(), $primaryKey);
+        return NamingHelper::getObjectTag(static::getTagDependencyCacheClass(), $primaryKey);
     }
 
     /**
@@ -69,7 +80,7 @@ trait TagDependencyTrait
         /** @var \yii\db\ActiveRecord|TagDependencyTrait $this */
         $cacheFields = $this->cacheCompositeTagFields();
 
-        if(empty($cacheFields)) {
+        if (empty($cacheFields)) {
             return [];
         }
 
@@ -85,14 +96,14 @@ trait TagDependencyTrait
                 $changed |= isset($oldFields[$tagField]);
             }
 
-            $tags[] = NamingHelper::getCompositeTag($this->className(), $tag);
+            $tags[] = NamingHelper::getCompositeTag(static::getTagDependencyCacheClass(), $tag);
 
             if ($changed) {
                 $tag = [];
                 foreach ($tagFields as $tagField) {
                     $tag[$tagField] = isset($oldFields[$tagField]) ? $oldFields[$tagField] : $this->$tagField;
                 }
-                $tags[] = NamingHelper::getCompositeTag($this->className(), $tag);
+                $tags[] = NamingHelper::getCompositeTag(static::getTagDependencyCacheClass(), $tag);
             }
         }
 
@@ -131,12 +142,13 @@ trait TagDependencyTrait
         $cacheLifetime = 86400,
         $throwException = false,
         $useIdentityMap = false
-    ) {
+    )
+    {
         /** @var \yii\db\ActiveRecord|TagDependencyTrait $model */
         $model = null;
         if (empty($id)) {
             if ($createIfEmptyId === true) {
-                $model = Yii::createObject(['class'=>static::class]);
+                $model = Yii::createObject(['class' => static::getTagDependencyCacheClass()]);
                 $model->loadDefaultValues();
             } else {
                 if ($throwException !== false) {
@@ -151,8 +163,8 @@ trait TagDependencyTrait
             }
         }
 
-        if ($useCache === true && $model===null) {
-            $model = Yii::$app->cache->get(static::className() . ":" . $id);
+        if ($useCache === true && $model === null) {
+            $model = Yii::$app->cache->get(static::getTagDependencyCacheClass() . ":" . $id);
         }
         if (!is_object($model)) {
             $model = static::findOne($id);
@@ -163,7 +175,7 @@ trait TagDependencyTrait
                 }
                 if ($useCache === true) {
                     Yii::$app->cache->set(
-                        static::className() . ":" . $id,
+                        static::getTagDependencyCacheClass() . ":" . $id,
                         $model,
                         $cacheLifetime,
                         new TagDependency([
